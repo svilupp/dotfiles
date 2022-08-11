@@ -1,0 +1,45 @@
+global !p
+def gen_header(snip):
+	placeholders_string = snip.buffer[snip.line].strip()
+	level = int(placeholders_string[0])
+
+	# erase current line
+	snip.buffer[snip.line] = ""
+	line_content = "#"*level + " ${1:Section Name}"
+	line_content += '\n$0'
+
+	snip.expand_anon(line_content)
+endglobal
+
+snippet meta "Markdown front matter (YAML format)" b
+---
+title: "$1"
+author: "Jan Siml"
+date: `!p from datetime import datetime
+if not snip.c:
+	snip.rv=datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S%z")`
+format:
+	html:
+		code-fold: true
+jupyter: julia-1.7
+---
+$0
+endsnippet
+
+
+snippet link "Markdown links"
+[$1]($2)$0
+endsnippet
+
+post_jump "gen_header(snip)"
+snippet "h([1-6])" "Markdown header" br
+`!p snip.rv = match.group(1)`
+endsnippet
+
+snippet detail "Clickable details" b
+<details>
+<summary><font size="2" color="red">${1:Click to show the code.}</font></summary>
+
+$2
+</details>
+endsnippet
