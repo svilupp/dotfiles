@@ -2,6 +2,23 @@
 local cmp = require'cmp'
 local lspkind = require'lspkind'
 
+--github copilot icon
+-- lspkind.init({
+--   symbol_map = {
+--     Copilot = "",
+--   },
+-- },
+
+-- vim.api.nvim_set_hl(0, "CmpItemKindCopilot", {fg ="#6CC644"})
+
+-- copilot trick
+-- https://github.com/zbirenbaum/copilot-cmp/tree/e93c7c8eab2e98c0fe34619cfb7487d13fb756a4
+local has_words_before = function()
+  if vim.api.nvim_buf_get_option(0, "buftype") == "prompt" then return false end
+  local line, col = unpack(vim.api.nvim_win_get_cursor(0))
+  return col ~= 0 and vim.api.nvim_buf_get_text(0, line-1, 0, line-1, col, {})[1]:match("^%s*$") == nil
+end
+
 cmp.setup({
   snippet = {
     expand = function(args)
@@ -10,13 +27,21 @@ cmp.setup({
     end,
   },
   mapping = cmp.mapping.preset.insert({
-          ['<Tab>'] = function(fallback)
-            if cmp.visible() then
-              cmp.select_next_item()
-            else
-              fallback()
-            end
-          end,
+          -- Allow differentiated behaviour of Tab
+          ["<Tab>"] = vim.schedule_wrap(function(fallback)
+              if cmp.visible() and has_words_before() then
+                cmp.select_next_item({ behavior = cmp.SelectBehavior.Select })
+              else
+                fallback()
+              end
+            end),
+          -- ['<Tab>'] = function(fallback)
+          --   if cmp.visible() then
+          --     cmp.select_next_item()
+          --   else
+          --     fallback()
+          --   end
+          -- end,
           ['<S-Tab>'] = function(fallback)
             if cmp.visible() then
               cmp.select_prev_item()
@@ -31,15 +56,19 @@ cmp.setup({
           ['<C-f>'] = cmp.mapping.scroll_docs(4),
         }),
   sources = {
+    -- Copilot Source
+    { name = "copilot" }, --, group_index = 2
+
+    -- other sources
     { name = 'nvim_lsp' }, -- For nvim-lsp
     { name = 'ultisnips' }, -- For ultisnips user.
     { name = 'nvim_lua' }, -- for nvim lua function
     { name = 'path' }, -- for path completion
     { name = 'buffer', keyword_length = 4 }, -- for buffer word completion
     { name = 'omni' },
+    { name = 'treesitter' },
     { name = 'pandoc_references' },
     { name = 'spell' },
-    { name = 'treesitter' }
    -- { name = 'emoji', insert = true, } -- emoji completion
   },
   completion = {
@@ -63,8 +92,28 @@ cmp.setup({
         pandoc_references = "[ref]",
         -- emoji = "[Emoji]",
 	      omni = "[Omni]",
+        Copilot = "[COP]"
       }),
     }),
+  },
+  sorting = {
+    priority_weight = 2,
+    comparators = {
+      require("copilot_cmp.comparators").prioritize,
+      require("copilot_cmp.comparators").score,
+
+      -- Below is the default comparitor list and order for nvim-cmp
+      cmp.config.compare.offset,
+      -- cmp.config.compare.scopes, --this is commented in nvim-cmp too
+      cmp.config.compare.exact,
+      cmp.config.compare.score,
+      cmp.config.compare.recently_used,
+      cmp.config.compare.locality,
+      cmp.config.compare.kind,
+      cmp.config.compare.sort_text,
+      cmp.config.compare.length,
+      cmp.config.compare.order,
+    },
   },
 })
 

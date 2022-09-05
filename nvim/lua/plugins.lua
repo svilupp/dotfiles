@@ -47,9 +47,9 @@ require("packer").startup({
 
     -- use({  "williamboman/nvim-lsp-installer",
     --         "neovim/nvim-lspconfig",
-    --         -- setup = function()
-    --         --     require("nvim-lsp-installer").setup {}
-    --         -- end,
+    --         setup = function()
+    --             require("nvim-lsp-installer").setup {}
+    --         end,
     --         after = "cmp-nvim-lsp",config=[[require('config.lsp')]] })
 
     -- use {
@@ -249,16 +249,20 @@ require("packer").startup({
       },
       ft = {"quarto"},
     })
-    -- use { 'quarto-dev/quarto-nvim',
-    --   requires="neovim/nvim-lspconfig",
-    --   config = function ()
+    use { 'quarto-dev/quarto-nvim',
+      requires="neovim/nvim-lspconfig",
+      -- after="neovim/nvim-lspconfig",
+      -- config=[[require('config.quarto-nvim')]]
+      -- config = function ()
 
-    --     require'quarto'.setup()
+        -- require'quarto'.setup()
+        -- local quarto = require'quarto'
+        -- vim.keymap.set('n', '<leader>qp', quarto.quartoPreview, {silent = true, noremap = true})
+        -- require'quarto'.setup()
+        -- -- vim.defer_fn(function() require('config.quarto-nvim') end, 2000)
 
-    --    local quarto = require'quarto'
-    --     vim.keymap.set('n', '<leader>qp', quarto.quartoPreview, {silent = true, noremap = true})
-    --   end
-    -- }
+      -- end
+    }
 
     -- -- open quarto preview
     -- -- nmap('<leader>qp', require'quarto'.quartoPreview)
@@ -360,6 +364,23 @@ require("packer").startup({
     use {'jpalardy/vim-slime', event = 'VimEnter'}
     use {'JuliaEditorSupport/julia-vim',event='VimEnter'}
 
+    if vim.g.is_mac then
+      -- github co-pilot
+      --required for installation
+      --use { 'github/copilot.vim',vim='VimEnter' }
+
+      use {
+          "zbirenbaum/copilot.lua",
+          event = {"VimEnter"},
+          config = function()
+            vim.defer_fn(function()
+              require("copilot").setup()
+            end, 100)
+          end,
+        }
+      use {"zbirenbaum/copilot-cmp",module = "copilot_cmp",requires="zbirenbaum/copilot.lua"}
+    end
+  
   end,
   config = {
     max_jobs = 16,

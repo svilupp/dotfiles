@@ -3,8 +3,9 @@ local api = vim.api
 local lsp = vim.lsp
 
 print('Loading lsp.lua!')
-require("nvim-lsp-installer").setup {}
+-- require("nvim-lsp-installer").setup {}
 local utils = require("utils")
+-- local xyz= require('lspconfig.util')
 
 local custom_attach = function(client, bufnr)
   -- Mappings.
