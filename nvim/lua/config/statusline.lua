@@ -8,12 +8,18 @@ local function spell()
   return ""
 end
 
+--- show indicator for Chinese IME
 local function ime_state()
   if vim.g.is_mac then
     -- ref: https://github.com/vim-airline/vim-airline/blob/master/autoload/airline/extensions/xkblayout.vim#L11
-    local layout = fn.libcall(vim.g.XkbSwitchLib, 'Xkb_Switch_getXkbLayout', '')
-    if layout == '0' then
-      return '[CN]'
+    local layout = fn.libcall(vim.g.XkbSwitchLib, "Xkb_Switch_getXkbLayout", "")
+
+    -- We can use `xkbswitch -g` on the command line to get current mode.
+    -- mode for macOS builtin pinyin IME: com.apple.inputmethod.SCIM.ITABC
+    -- mode for Rime: im.rime.inputmethod.Squirrel.Rime
+    local res = fn.match(layout, [[\v(Squirrel\.Rime|SCIM.ITABC)]])
+    if res ~= -1 then
+      return "[CN]"
     end
   end
 
@@ -21,44 +27,77 @@ local function ime_state()
 end
 
 local function trailing_space()
-  -- Get the positions of trailing whitespaces from plugin 'jdhao/whitespace.nvim'.
-  local trailing_space_pos = vim.b.trailing_whitespace_pos
+  if not vim.o.modifiable then
+    return ""
+  end
+
+  local line_num = nil
+
+  for i = 1, fn.line("$") do
+    local linetext = fn.getline(i)
+    -- To prevent invalid escape error, we wrap the regex string with `[[]]`.
+    local idx = fn.match(linetext, [[\v\s+$]])
+
+    if idx ~= -1 then
+      line_num = i
+      break
+    end
+  end
 
   local msg = ""
-  if #trailing_space_pos > 0 then
-    -- Note that lua index is 1-based, not zero based!!!
-    local line = trailing_space_pos[1][1]
-    msg = string.format("[%d]trailing", line)
+  if line_num ~= nil then
+    msg = string.format("[%d]trailing", line_num)
   end
 
   return msg
 end
 
 local function mixed_indent()
+  if not vim.o.modifiable then
+    return ""
+  end
+
   local space_pat = [[\v^ +]]
   local tab_pat = [[\v^\t+]]
-  local space_indent = fn.search(space_pat, 'nwc')
-  local tab_indent = fn.search(tab_pat, 'nwc')
+  local space_indent = fn.search(space_pat, "nwc")
+  local tab_indent = fn.search(tab_pat, "nwc")
   local mixed = (space_indent > 0 and tab_indent > 0)
   local mixed_same_line
   if not mixed then
-    mixed_same_line = fn.search([[\v^(\t+ | +\t)]], 'nwc')
+    mixed_same_line = fn.search([[\v^(\t+ | +\t)]], "nwc")
     mixed = mixed_same_line > 0
   end
-  if not mixed then return '' end
-  if mixed_same_line ~= nil and mixed_same_line > 0 then
-     return 'MI:'..mixed_same_line
+  if not mixed then
+    return ""
   end
-  local space_indent_cnt = fn.searchcount({pattern=space_pat, max_count=1e3}).total
-  local tab_indent_cnt =  fn.searchcount({pattern=tab_pat, max_count=1e3}).total
+  if mixed_same_line ~= nil and mixed_same_line > 0 then
+    return "MI:" .. mixed_same_line
+  end
+  local space_indent_cnt = fn.searchcount({ pattern = space_pat, max_count = 1e3 }).total
+  local tab_indent_cnt = fn.searchcount({ pattern = tab_pat, max_count = 1e3 }).total
   if space_indent_cnt > tab_indent_cnt then
-    return 'MI:'..tab_indent
+    return "MI:" .. tab_indent
   else
-    return 'MI:'..space_indent
+    return "MI:" .. space_indent
   end
 end
 
-require("lualine").setup({
+local diff = function()
+  local git_status = vim.b.gitsigns_status_dict
+  if git_status == nil then
+    return
+  end
+
+  local modify_num = git_status.changed
+  local remove_num = git_status.removed
+  local add_num = git_status.added
+
+  local info = { added = add_num, modified = modify_num, removed = remove_num }
+  -- vim.pretty_print(info)
+  return info
+end
+
+require("lualine").setup {
   options = {
     icons_enabled = true,
     theme = "auto",
@@ -71,16 +110,22 @@ require("lualine").setup({
   },
   sections = {
     lualine_a = { "mode" },
-    lualine_b = { "branch", "diff" },
+    lualine_b = {
+      "branch",
+      {
+        "diff",
+        source = diff,
+      },
+    },
     lualine_c = {
       "filename",
       {
         ime_state,
-        color = {fg = 'black', bg = '#f46868'}
+        color = { fg = "black", bg = "#f46868" },
       },
       {
         spell,
-        color = {fg = 'black', bg = '#a7c080'}
+        color = { fg = "black", bg = "#a7c080" },
       },
     },
     lualine_x = {
@@ -100,15 +145,15 @@ require("lualine").setup({
       "location",
       {
         "diagnostics",
-        sources = { "nvim_diagnostic" }
+        sources = { "nvim_diagnostic" },
       },
       {
         trailing_space,
-        color = "WarningMsg"
+        color = "WarningMsg",
       },
       {
         mixed_indent,
-        color = "WarningMsg"
+        color = "WarningMsg",
       },
     },
   },
@@ -121,6 +166,5 @@ require("lualine").setup({
     lualine_z = {},
   },
   tabline = {},
-  extensions = {'quickfix', 'fugitive', 'nvim-tree'},
-})
-
+  extensions = { "quickfix", "fugitive", "nvim-tree" },
+}
